@@ -1,0 +1,15 @@
+<?php
+
+use App\Classes\Database\Database;
+use App\Classes\SiteMaps\SiteMap;
+include_once('classes/hfu.php');
+
+$dbh = Database::getConnection();
+$hfu = new Hfu();
+$siteMap = new SiteMap($dbh, $hfu);
+
+$siteMap->loadPages();
+$siteMap->loadToursAndCategories();
+$siteMap->loadCruises();
+
+file_put_contents(ROOTPATH . "/sitemap.xml", $siteMap->makeContent());
