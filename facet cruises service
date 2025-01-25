@@ -1,0 +1,263 @@
+<?php
+
+namespace App\Classes\Search;
+
+use App\Classes\Database\Database;
+use App\Classes\Database\RTConnection;
+use App\Entity\Search\SearchCruises;
+use App\Repository\Search\SearchCruisesRepository;
+use Doctrine\ORM\EntityManager;
+
+class FacetCruisesService
+{
+    /** @var EntityManager */
+    private EntityManager $em;
+    private SearchCruisesRepository $repo;
+    private RTConnection $connect;
+
+    public function __construct()
+    {
+        $this->em = \DoctrineInstance::getInstance()->getEm();
+        $this->repo = $this->em->getRepository(SearchCruises::class);
+        $this->connect = Database::getConnection();
+    }
+
+    public function getArrayResult(array $filter = []): array
+    {
+        $filter = [
+            "departureFrom" => $this->getDepartureFrom($filter) ?? [],
+            "departureTo" => $this->getDepartureTo($filter) ?? [],
+            "duration" => $this->getDuration($filter) ?? [],
+            "shipNames" => $this->getShipName($filter) ?? [],
+            "dates" => $this->getDate($filter) ?? [],
+        ];
+
+        return $filter;
+    }
+
+    private function getDepartureFrom(array $filter): ?array
+    {
+        $sql = '
+                SELECT DISTINCT
+                    departureFrom
+                FROM
+                    faset_search_cruises
+                WHERE
+	                1 = 1';
+
+        if ($filter['departureTo']) {
+            $sql .= $this->getDepartureToSql($filter['departureTo']);
+        }
+        if ($filter['duration']) {
+            $sql .= $this->getDurationSql($filter['duration']);
+        }
+        if ($filter['shipName']) {
+            $sql .= $this->getShipNameSql($filter['shipName']);
+        }
+        if ($filter['date']) {
+            $sql .= $this->getDateSql($filter['date']);
+        }
+
+        $sql .= ' 
+            ORDER BY faset_search_cruises.departureFrom ASC
+        ';
+
+        $result = $this->connect->getCol($sql);
+
+        if (empty($result)) {
+
+            return null;
+        }
+
+        return $result;
+    }
+
+    private function getDepartureTo(array $filter): ?array
+    {
+        $sql = '
+                SELECT DISTINCT
+                    departureTo
+                FROM
+                    faset_search_cruises
+                WHERE
+	                1 = 1';
+
+        if ($filter['departureFrom']) {
+            $sql .= $this->getDepartureFromSql($filter['departureFrom']);
+        }
+        if ($filter['duration']) {
+            $sql .= $this->getDurationSql($filter['duration']);
+        }
+        if ($filter['shipName']) {
+            $sql .= $this->getShipNameSql($filter['shipName']);
+        }
+        if ($filter['date']) {
+            $sql .= $this->getDateSql($filter['date']);
+        }
+
+        $sql .= ' 
+            ORDER BY faset_search_cruises.departureTo ASC
+        ';
+
+        $result = $this->connect->getCol($sql);
+
+        if (empty($result)) {
+
+            return null;
+        }
+
+        return $result;
+    }
+
+    private function getDuration(array $filter): ?array
+    {
+        $sql = '
+                SELECT DISTINCT
+                    duration
+                FROM
+                    faset_search_cruises
+                WHERE
+	                1 = 1';
+
+        if ($filter['departureFrom']) {
+            $sql .= $this->getDepartureFromSql($filter['departureFrom']);
+        }
+        if ($filter['departureTo']) {
+            $sql .= $this->getDepartureToSql($filter['departureTo']);
+        }
+        if ($filter['shipName']) {
+            $sql .= $this->getShipNameSql($filter['shipName']);
+        }
+        if ($filter['date']) {
+            $sql .= $this->getDateSql($filter['date']);
+        }
+
+        $sql .= ' 
+            ORDER BY duration ASC
+        ';
+
+        $result = $this->connect->getCol($sql);
+
+        if (empty($result)) {
+
+            return null;
+        }
+
+        return $result;
+    }
+
+    private function getShipName(array $filter): ?array
+    {
+        $sql = '
+                SELECT DISTINCT
+                    shipName
+                FROM
+                    faset_search_cruises
+                WHERE
+	                1 = 1';
+
+        if ($filter['departureFrom']) {
+            $sql .= $this->getDepartureFromSql($filter['departureFrom']);
+        }
+        if ($filter['departureTo']) {
+            $sql .= $this->getDepartureToSql($filter['departureTo']);
+        }
+        if ($filter['duration']) {
+            $sql .= $this->getDurationSql($filter['duration']);
+        }
+        if ($filter['date']) {
+            $sql .= $this->getDateSql($filter['date']);
+        }
+
+        $sql .= ' 
+            ORDER BY shipName ASC
+        ';
+
+        $result = $this->connect->getCol($sql);
+
+        if (empty($result)) {
+
+            return null;
+        }
+
+        return $result;
+    }
+
+    private function getDate(array $filter): ?array
+    {
+        $sql = '
+                SELECT DISTINCT 
+                    date
+                FROM
+                    faset_search_cruises
+                WHERE
+	                1 = 1';
+
+        if ($filter['departureFrom']) {
+            $sql .= $this->getDepartureFromSql($filter['departureFrom']);
+        }
+        if ($filter['departureTo']) {
+            $sql .= $this->getDepartureToSql($filter['departureTo']);
+        }
+        if ($filter['duration']) {
+            $sql .= $this->getDurationSql($filter['duration']);
+        }
+        if ($filter['shipName']) {
+            $sql .= $this->getShipNameSql($filter['shipName']);
+        }
+
+        $sql .= ' 
+            ORDER BY faset_search_cruises.date ASC
+        ';
+
+        $result = $this->connect->getCol($sql);
+
+        $newDates = [];
+
+        if($result){
+            $dates = $result;
+            $newDates = [];
+
+            foreach ($dates as $date) {
+                $newDateStr = new \DateTime($date);
+                $newDates[] = $newDateStr->format("Y-m-d");
+            }
+        }
+
+        if (count($newDates) == 0) {
+
+            return null;
+        }
+
+        return $newDates;
+    }
+
+
+    private function getDepartureFromSql(string $filter)
+    {
+        return ' AND faset_search_cruises.departureFrom = "' . $filter . '"';
+    }
+
+    private function getDepartureToSql(string $filter)
+    {
+        return ' AND faset_search_cruises.departureTo = "' . $filter . '"';
+    }
+
+    private function getDurationSql(int $filter)
+    {
+        return ' AND faset_search_cruises.duration = "' . $filter . '"';
+    }
+
+    private function getShipNameSql(string $filter)
+    {
+        return ' AND faset_search_cruises.shipName = "'. $filter .'"';
+    }
+
+    private function getDateSql(string $filter)
+    {
+        $date = new \DateTime($filter);
+        $date->setTimezone(new \DateTimeZone('Europe/Minsk'));
+
+        return ' AND faset_search_cruises.date = "' . $date->format("Y-m-d") . '"';
+    }
+}
