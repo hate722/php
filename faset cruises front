@@ -1,0 +1,133 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import Box from '@mui/material/Box';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
+import ru from 'date-fns/locale/ru';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import Button from '@mui/material/Button';
+import { MobileDatePicker } from '@mui/x-date-pickers';
+import Link from '@mui/material/Link';
+import Skeleton from '@mui/material/Skeleton';
+import { createTheme, useMediaQuery } from '@mui/material';
+
+const App = () => {
+    const [filter, setFilter] = useState(false);
+    const [departureFrom, setDepartureFrom] = useState([]);
+    const [departureTo, setDepartureTo] = useState([]);
+    const [shipNames, setShipNames] = useState([]);
+    const [duration, setDuration] = useState([]);
+    const [dates, setDates] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchFilter();
+    }, []);
+
+    useEffect(() => {
+        if (filter) {
+            fetchData();
+        }
+    }, [filter]);
+
+    const theme = createTheme({
+        breakpoints: {
+            values: {
+                mobile: 0,
+                tablet: 791,
+                desktop: 1024,
+                widescreen: 1216,
+                fullhd: 1408,
+            },
+        },
+    });
+
+    const fetchFilter = async () => {
+        try {
+            const url = new URL(window.location.href);
+            let newFilter = {};
+
+            if (url.searchParams.size !== 0) {
+                newFilter.departureFrom = url.searchParams.get('departureFrom') || '';
+                newFilter.departureTo = url.searchParams.get('departureTo') || '';
+                newFilter.shipName = url.searchParams.get('shipName') || '';
+                newFilter.duration = url.searchParams.get('duration') || '';
+
+                if (url.searchParams.get('date')) {
+                    const dateAr = url.searchParams.get('date').split('.');
+                    newFilter.date = new Date(`${dateAr[2]}-${dateAr[1]}-${dateAr[0]}`);
+                }
+            }
+
+            setFilter(newFilter);
+        } catch (error) {
+            console.error('Error fetching filter:', error);
+        }
+    };
+
+    const fetchData = () => {
+        let data = new FormData();
+
+        if (filter) {
+            data.append('filter', JSON.stringify(filter));
+        }
+
+        axios.post('/searchCruises/frontend/request.php?type=getResult', data)
+            .then((result) => {
+                if (result.data?.success) {
+                    setDepartureFrom(result.data.departureFrom);
+                    setDepartureTo(result.data.departureTo);
+                    setDuration(result.data.duration);
+                    setShipNames(result.data.shipNames);
+                    setDates(result.data.dates);
+                    setLoading(true);
+                } else if (result.data?.error) {
+                    console.error('backend error: ', result.data?.message);
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching data:', error);
+            });
+    };
+
+    return (
+        <Box>
+            {loading === false ? (
+                <Box className="search__filter_skeleton">
+                    {[...Array(5)].map((_, index) => (
+                        <Skeleton key={index} className="facet__skeleton_item" />
+                    ))}
+                </Box>
+            ) : (
+                <Box className="search__filter">
+                    <Box className="search__filter_fields">
+                        <Autocomplete
+                            options={departureFrom}
+                            value={filter?.departureFrom || null}
+                            onChange={(e, value) => setFilter({ ...filter, departureFrom: value })}
+                            renderInput={(params) => (
+                                <TextField {...params} placeholder="Выезд из" />
+                            )}
+                        />
+
+                        <Autocomplete
+                            options={departureTo}
+                            value={filter?.departureTo || null}
+                            onChange={(e, value) => setFilter({ ...filter, departureTo: value })}
+                            renderInput={(params) => (
+                                <TextField {...params} placeholder="В города" />
+                            )}
+                        />
+                    </Box>
+
+                     <Button className="button__filter" onClick={() => window.location.replace('/rechnye-kruizy/') }>
+                            Найти
+                        </Button>
+                </Box>
+            )}
+        </Box>
+    );
+};
+
+export default App;
